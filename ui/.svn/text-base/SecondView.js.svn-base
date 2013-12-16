@@ -1,0 +1,103 @@
+function SecondView() {
+	
+	var self = Ti.UI.createView({backgroundColor:'#eee9cf'});	
+	var imgs = [];
+	var cf;
+
+	/* 
+	 * 
+	 * The FILE system API is not fully documented on Appcelerator's website. 
+	 * For a more complete list of available methods for Ti.Filesystem check the Kitchen Sink's filesystem.js 
+	 * 
+	 * */
+    				
+	function loadData() {	
+						
+		var dir = Ti.Filesystem.getFile(Titanium.Filesystem.applicationDataDirectory);
+		var fdir = dir.getDirectoryListing();
+		var numFiles = fdir.length || 1; //Documents folder is empty on 1st load post install, so unless there's a default value, you get a blank screen... 	
+		
+		//reset array to include new images
+		imgs = null;
+		imgs  = [];
+		
+		Ti.API.info("numFiles = " + numFiles);
+		
+		for(var a=0; a < numFiles; a++ ) { // a < numFiles-1;
+		
+			var f = Titanium.Filesystem.getFile(Titanium.Filesystem.applicationDataDirectory,fdir[a]);
+			
+			if(f.exists()) 
+			{
+				var fr = f.read();		
+			
+				Ti.API.info('fr.mimeType = ' + fr.mimeType);
+				
+				if(fr.mimeType === 'image/jpeg')
+				{
+					//Ti.API.info('photo.nativePath: ' + f.nativePath);
+					imgs.push(f.nativePath);													
+				}			
+			}						
+		}
+		
+		Ti.API.info('imgs.length = ' + imgs.length);
+	}
+
+	var LoadingIndicator = require('ui/LoadingIndicator'); 
+	var loadingIndicator = new LoadingIndicator();
+	loadingIndicator.fireEvent('showLoadwithCustomMsg', {txt: 'Building\nSlides...'});		
+	loadingIndicator.hide();
+	self.add(loadingIndicator);		
+			
+	function doCovrFlow()
+	{	
+		//prevent memory leak:
+		if(cf != null){
+        	self.remove(cf);
+        	cf = null;
+    	}		
+		loadData();
+		
+		loadingIndicator.show();
+		
+		// create coverflow view with images
+		cf = Ti.UI.iOS.createCoverFlowView({ 
+			images:imgs,
+			backgroundColor:'#000',
+			top:'-15%'
+			//width:240,
+			//height:320
+		});
+		
+		// click listener - when image is clicked
+		cf.addEventListener('click',function(e)
+		{
+			Ti.API.info("image clicked: "+e.index+', selected is '+cf.selected);	
+		});
+		
+		// change listener when active image changes
+		cf.addEventListener('change',function(e)
+		{
+			Ti.API.info("image changed: "+e.index+', selected is '+cf.selected);	
+		});
+		self.add(cf);	
+		
+		//cf.selected = imgs.length - 1;
+		//cf.selected = 0;
+		
+		loadingIndicator.hide();
+	}
+		
+	function hideCF() {
+		cf.hide();
+	}
+	
+	self.addEventListener('addTheCovrFlow', doCovrFlow); 	
+	//prevents quick flash of previous CoverFlow component w/ old images:
+	self.addEventListener('hidePreviousCovrFlow', hideCF); 
+	
+	return self;
+}
+
+module.exports = SecondView;

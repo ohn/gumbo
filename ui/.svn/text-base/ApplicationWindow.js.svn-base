@@ -1,0 +1,86 @@
+//Application Window Component Constructor
+function ApplicationWindow() {
+		
+	var d1 = 200; //animation delay
+	
+	
+	//load component dependencies
+	var FirstView = require('ui/FirstView');
+	var NavBar = require('ui/NavBar');
+	var SecondView;
+				
+	//create component instance
+	var self = Ti.UI.createWindow({
+		backgroundColor:'#ffffff',
+		navBarHidden:false,
+		exitOnClose:true
+	});
+
+	//construct UI
+	var firstView = new FirstView();
+	self.add(firstView);	 	
+	var secondView;	 
+	var navBar = new NavBar();
+	navBar.top = '82.5%'; //380	
+	self.add(navBar);
+
+
+// START ANIMATION definitions 
+
+	var animateOff = Titanium.UI.createAnimation({ left:Ti.App.SCREEN_WIDTH-1, duration:d1 }); //left:  '99%' 300,
+	var animatOffHandler = function() {				   	 	   
+	   secondView.show();
+	   secondView.animate(animat2nd);  		   	   
+	};	
+	animateOff.addEventListener('complete', animatOffHandler);
+
+	var animateOn = Titanium.UI.createAnimation({ left: 0, duration:d1 });
+	var animatOnHandler = function() {};
+	animateOn.addEventListener('complete', animatOnHandler);
+
+	var animat2nd = Titanium.UI.createAnimation({ opacity: 1, duration:d1 });
+	var animat2ndOnHandler = function() {		  	   
+	  secondView.fireEvent('addTheCovrFlow');	  
+	}; 
+	animat2nd.addEventListener('complete', animat2ndOnHandler);	
+
+// END ANIMATION definitions 
+
+	Ti.App.addEventListener('event_btn1', function(e) {
+		//reset firstView position after animation	 
+	    secondView.fireEvent('hidePreviousCovrFlow');	  	  		   
+	    secondView.hide();	
+	    firstView.show();
+	    
+	    firstView.animate(animateOn);    	
+	});
+
+	Ti.App.addEventListener('event_btn2', function(e) {
+		/* "Best Practices?... https://wiki.appcelerator.org/x/I4CeAQ - */		
+		if(typeof secondView != "object")	
+		{				
+			SecondView = require('ui/SecondView'); 
+			secondView = new SecondView();
+			secondView.hide();
+			self.add(secondView);					
+		}
+		secondView.opacity = 0;
+		firstView.animate(animateOff);
+	});
+		
+	return self;
+}
+
+/*
+ * Aim to have only ONE window per application (single execution context) to avoid memory leak pitfalls 
+ * https://wiki.appcelerator.org/x/I4CeAQ  
+ */
+
+//make constructor function the public component interface
+module.exports = ApplicationWindow;
+
+/*
+ * See CommonJS references for definition / explanation of module.exports as of Titanium SDK 1.8
+ * https://wiki.appcelerator.org/x/IYCeAQ
+ */
+

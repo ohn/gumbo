@@ -1,0 +1,307 @@
+//FirstView Component Constructor
+function FirstView() {	
+		
+	//create object instance, a parasitic subclass of Observable
+	var self = Ti.UI.createView(); //
+	
+	var ourURL = 'http://www.flickr.com/photos/78167147@N07/'; //http://www.flickr.com/photos/76120175@N04/
+	var imgNam; 
+	
+	var imageView = Titanium.UI.createImageView({
+		height:'70%', //320
+		width:'100%', //320
+		top:0,
+		left:0,
+		backgroundColor:'#eee9cf' 
+	});	
+	self.add(imageView);	
+		
+	var fBtnBg = Ti.UI.createView( { left:0, top:'70%', width:'100%', height:'13%', backgroundColor:'#60604b', zIndex:649 } );
+	self.add(fBtnBg);		
+	
+	var popoverView;
+	var arrowDirection;
+	
+	if (Titanium.Platform.osname == 'ipad')
+	{
+		// photogallery displays in a popover on the ipad and we
+		// want to make it relative to our image with a left arrow
+		arrowDirection = Ti.UI.iPad.POPOVER_ARROW_DIRECTION_LEFT;
+		popoverView = imageView;
+	}	
+		
+	var fotoBtn = Titanium.UI.createButton({    title:  'TAKE A PHOTO', 
+									            left:   Ti.App.SCREEN_WIDTH * 0.03, //10, at 3% of screen width
+									            top:    '72%',  //330 
+									            width:  '94%', //300 
+									            height: '8.5%', //40
+									            zIndex: 650 }); 	
+	self.add(fotoBtn);
+	
+	fotoBtn.addEventListener('click', function(e) {
+	
+	    loadingIndicator.fireEvent('showLoadwithCustomMsg', {txt: 'Saving\nimage...'});
+		wView.hide();	
+	
+		//Titanium.Media.showCamera({ 
+		Titanium.Media.openPhotoGallery({ //for Simulator testing
+		
+			success:function(event)
+			{
+				loadingIndicator.show();
+								
+				if(typeof wView === 'object'){
+					
+					self.remove(wView);
+					wView = null;					
+					wView = Ti.UI.createWebView({ url:ourURL,
+												  center:'50%',
+												  top:0,
+												  width:'100%',
+												  height:'73%'
+					});	
+					wView.hide();	
+					self.add(wView);					
+				}				
+								
+				var cropRect = event.cropRect;
+				var image = event.media;
+				
+				//Ti.API.info(image.width +' x '+ image.height);
+				
+				//resize image (camera's default size is huge 768x1024 at 8 megapixels')
+				var imgV = Titanium.UI.createImageView({
+		            image:image,
+		            width:240, //768x1024 proportionally scales to 480x640, 375x500, 240x320, 180x240
+		            height:320 //240x320 for CoverFlow? 
+		        });		 
+		        
+				image = imgV.toImage(); //image = imgV.toImage().media;
+				
+				//Ti.API.info(image.width +' x '+ image.height);
+												
+				//create a unique name for the image 
+				imgNam = new Date().getTime() + '_camera_photo.jpg';										
+				var f = Titanium.Filesystem.getFile(Titanium.Filesystem.applicationDataDirectory, imgNam); 
+				
+				//save the image to the app's /Documents folder				
+				f.write(image);	
+		
+				// set image view
+				if(event.mediaType == Ti.Media.MEDIA_TYPE_PHOTO)
+				{
+					//imageView.image = image;
+					imageView.image = f.nativePath; 					
+				}		
+			
+				checkIfUploadOK( image, imgNam ); //saveToFlickr( image, imgNam ); //getFullFlickrToken();
+				
+			},
+			cancel:function() {},
+			error:function(error)
+			{
+				// create alert
+				var a = Titanium.UI.createAlertDialog({title:'Camera'});		
+				// set message
+				if (error.code == Titanium.Media.NO_CAMERA) {
+					a.setMessage('Device does not have video recording capabilities');
+				} else {
+					a.setMessage('Unexpected error: ' + error.code);
+				}		
+				a.show();											
+			},
+			allowEditing:false,
+			popoverView:popoverView,
+			arrowDirection:arrowDirection,
+			mediaTypes:[Ti.Media.MEDIA_TYPE_VIDEO,Ti.Media.MEDIA_TYPE_PHOTO]
+		});
+				
+	});
+	
+	var wView = Ti.UI.createWebView({
+		url:ourURL,
+		center:'50%',
+		top:0,
+		width:'100%',
+		height:'73%'
+	});	
+	wView.hide();
+	self.add(wView);
+
+	var LoadingIndicator = require('ui/LoadingIndicator'); 
+	var loadingIndicator = new LoadingIndicator();
+	loadingIndicator.hide();
+	self.add(loadingIndicator);
+
+	function saveToFlickr( zImg, zImgName) {
+		
+		loadingIndicator.hide();
+									
+		var api_key = '9dd86668b250cde99ff46214aa30e3c0'; 	//79eed4a1ddcd2a90cab09831bb76ed96
+        var token = '72157629628048053-572db05374c69618'; 	//72157629219905714-03c831bf906bfdaf
+        var shared_secret = 'ce074bbbe7c9adcf'; 			//2e92e1c873c71fb2
+        var title = imgNam; 
+         
+        var signature_string = shared_secret + "api_key" + api_key + "auth_token" + token + "title" + title;
+        var api_sig = Ti.Utils.md5HexDigest(signature_string); //hex_md5(signature_string) 
+ 
+        // write and then read image for uploading, not sure if this is required
+        var image = zImg;
+        var f = Titanium.Filesystem.getFile(Titanium.Filesystem.applicationDataDirectory, zImgName); //imgNam 'camera_photo.png'
+        f.write(image);
+        var i = f.read();
+ 		
+ 		loadingIndicator.fireEvent('showLoadwithCustomMsg', {txt: 'Uploading\nto Flickr...'});
+ 		loadingIndicator.show();
+ 
+        xhr = Titanium.Network.createHTTPClient();
+        xhr.timeout = 60000;
+        xhr.setRequestHeader('enctype', 'multipart/form-data');
+        xhr.onload = function() {
+            
+            loadingIndicator.hide();
+            
+            wView.setUrl(ourURL); 
+            
+            //doAlert('Upload Complete', 'Response from Flickr: ', xhr);            
+              
+            wView.reload();         	
+            wView.show();	 
+        };
+ 
+        var url = 'http://api.flickr.com/services/upload/';
+ 
+        xhr.open('POST', url);
+        xhr.send({
+            photo:i,
+            title:title,
+            api_key:api_key,
+            auth_token:token,
+            api_sig:api_sig
+        });	
+	}
+	
+	function doAlert(msg1, msg2, obj) {
+		if(typeof a2 === 'object') { a2 = null }		
+		var a2 = Titanium.UI.createAlertDialog({title: msg1});
+        a2.setMessage(msg2 +  obj.responseText);
+        a2.show();		
+	}
+	
+	function checkIfUploadOK( image, imgNam ) { 
+		
+		//Memory leak prevention
+		if(typeof alrt === 'object'){
+			alrt.removeEventListener('click'); 
+			alrt = null;			 
+		}
+		
+		loadingIndicator.hide();
+		
+		var alrt = Titanium.UI.createAlertDialog({
+		    title: 'UPLOAD',
+		    message: 'Do you want to upload this photo to Flickr?',
+		    buttonNames: ['Yes', 'No'],
+		    cancel: 1
+		});
+		 
+		alrt.addEventListener('click', function(e) {
+			
+		    Titanium.API.info('e = ' +  JSON.stringify(e));
+		 
+	       //Clicked cancel, first check is for iphone, second for android
+	       if (e.cancel === e.index || e.cancel === true) {
+	          return;
+	       }
+	       
+	       switch (e.index) 
+	       {
+	          case 0: 
+	          	Titanium.API.info('Clicked button 0 (YES)');
+	          	saveToFlickr( image, imgNam ); //getFullFlickrToken();
+	          	break;
+	 
+	          //This will never be reached, if you specified cancel for index 1
+	          case 1: 
+	          	Titanium.API.info('Clicked button 1 (NO)');
+	          	break;
+	 
+	          default:
+	          	break;	 
+	      }		 
+		});
+		 
+		alrt.show();				
+	}	
+	
+	/* THIS METHOD IS NEEDED ONLY ONCE DURING DEVELOPMENT, TO GET THE "FULL TOKEN" 
+	 	unless each user authenticates individually and gets her own mini_token (probably the case in real life app)	 	
+	 * */
+	
+	/*
+	 
+	 * Creat Yahoo account, sign in to Flickr
+	 * Go to App Garden
+	 * Create an App
+	 * get the API key & Secret
+	 * get the Mini-Token http://www.flickr.com/services/api/auth.howto.mobile.html
+	 *   view your App in App Garden, click on 'Edit the authentication flow', grab your authentication url to get the mini-token
+	 * use getFullFlickrToken() function below to get full token
+	 * look for the value of '_content' in flickr's json response 
+	 * plug it in to 'var token' in saveToFlickr() above
+	 * 
+	 * */
+	/*
+	function getFullFlickrToken() {	
+				
+		var method = 'flickr.auth.getFullToken';
+        var api_key = '9dd86668b250cde99ff46214aa30e3c0'; //79eed4a1ddcd2a90cab09831bb76ed96
+        var mini_token = '914-246-894'; //127-145-431 
+        var shared_secret = 'ce074bbbe7c9adcf'; //2e92e1c873c71fb2
+        var format = 'json';
+  
+        var signature_string = shared_secret + "api_key" + api_key + "format" + format + "method" + method + "mini_token" + mini_token + "permswrite";
+        var api_sig = Ti.Utils.md5HexDigest(signature_string);//hex_md5(signature_string);
+        Ti.API.info("Sig " + api_sig);
+ 
+        xhr = Titanium.Network.createHTTPClient();
+        xhr.timeout = 60000;
+        xhr.onload = function() {
+            	
+            	//each Mini Token works ONCE ONLY, after you've used it, you need to generate a new MINI Token via http://www.flickr.com/auth-72157629583966273
+        	
+            Ti.API.info("======== respone: " + this.responseText);                
+            Ti.API.info("======== respone.auth: " + this.responseText.auth);
+            
+            doAlert('Mini Token Request Complete', 'Response from Flickr: ', xhr);
+            
+        	// for mini_token 127-145-431
+        	 //jsonFlickrApi({"auth":{"token":{"_content":"72157629219905714-03c831bf906bfdaf"}, "perms":{"_content":"write"}, "user":{"nsid":"76120175@N04", "username":"Gtoo_too", "fullname":""}}, "stat":"ok"})
+        	
+        	// fpr mini_token 914-246-894
+        	//jsonFlickrApi({"auth":{"token":{"_content":"72157629628048053-572db05374c69618"}, "perms":{"_content":"write"}, "user":{"nsid":"78167147@N07", "username":"Gtoo_too2", "fullname":""}}, "stat":"ok"})
+        	        
+        };
+        xhr.onerror = function(e) {
+	        Ti.API.debug();
+	        
+	        var a4 = Titanium.UI.createAlertDialog({title:'Upload Error'});
+            a4.setMessage('Response from Flickr: ' + this.responseText + ', ERROR = ' + e.error);
+            a4.show();
+     	};	
+ 
+        var url = 'http://api.flickr.com/services/rest/?format=json&method='+method+'&api_key='+api_key+'&mini_token='+mini_token+'&perms=write&api_sig='+api_sig;
+ 
+        xhr.open('GET', url);
+        xhr.send();	
+	}
+	*/
+
+		
+	return self;
+}
+
+module.exports = FirstView;
+
+
+

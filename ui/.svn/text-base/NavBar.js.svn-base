@@ -1,0 +1,80 @@
+function NavBar() {
+
+	var self = Ti.UI.createView( { zIndex:600 } );
+	var bInactive = 0.6;
+	var btnW = '80dp';//80;
+	var btnH = 40;
+	var B1LEFT = Ti.App.SCREEN_WIDTH*0.2;
+	
+	var bgBar = Ti.UI.createView( { left:0, top:0, width:'100%', height:'100%', backgroundColor:'#008b5c', zIndex:601 } ); //self.width ???  320 height:140,
+	self.add(bgBar);	
+	
+	
+	var a2 = Titanium.UI.createAlertDialog({title:'Platform'});
+    a2.setMessage("architecture = " +Ti.Platform.architecture + ', model = ' + Ti.Platform.model + ', indexOf(iPhone): ' + 
+    			   Ti.Platform.getModel().indexOf('iPhone',0) + ', osname = ' + Titanium.Platform.osname );
+    //a2.show();	
+		
+	if( Titanium.Platform.osname == 'iphone' ) { //Ti.Platform.getModel().indexOf('iPhone',0) != -1
+		B1LEFT = Ti.App.SCREEN_WIDTH*0.2;
+	} else if( Titanium.Platform.osname == 'ipad' ) { //Ti.Platform.getModel().indexOf('iPad',0) != -1 
+		B1LEFT = Ti.App.SCREEN_WIDTH*0.4;
+	} else if( Ti.Platform.getModel().indexOf('Simulator',0) != -1 ) {
+		//'Simulator' doesn't distinguish between iPhone, iPad...
+	}
+		
+	//create buttons to switch between Views: 	
+	var btn1 = makeBtn( { title:'HOME', left:B1LEFT, zIndex:602 } ); //style:'none' left:70, 
+	btn1.enabled = false;		
+	btn1.opacity = bInactive;		
+	self.add(btn1);			
+	var btn2 = makeBtn( { title:'PHOTOS', left:btn1.left+btn1.width+20, zIndex:603 } );  //a4dc7b backgroundColor:'#347b00' left:170,
+	self.add(btn2);		
+
+
+	//go to page1
+	btn1.addEventListener('click', function() {
+		
+		btn1.enabled = false;
+		btn1.opacity = bInactive;		
+		btn2.enabled = true;
+		btn2.opacity = 1;	
+		
+		Ti.App.fireEvent('event_btn1');
+	});	
+	
+	//go to page2
+	btn2.addEventListener('click',  function(e) {	
+		
+		btn1.enabled = true;
+		btn1.opacity = 1;
+		btn2.enabled = false;		
+		btn2.opacity = bInactive;	
+		
+		Ti.App.fireEvent('event_btn2');
+	});			
+
+	function makeBtn( obj ){
+	 	
+	  var o = { title:  obj.title, 
+	            left:   obj.left, 
+	            top:    obj.top || self.height+20, //20  400 
+	            width:  obj.width || btnW, 
+	            height: obj.height || btnH, 
+	            zIndex: obj.zIndex,
+	            backgroundImage: 'none',
+	            borderRadius: 6,
+	            backgroundColor: '#c2d82e', 
+   				backgroundSelectedColor: 'black',
+   				color:'#60604b', //text color
+   				selectedColor:'#60604b', //selected text color
+   				font: { fontSize:12, fontWeight:'bold' }	            
+	          }; 
+	 	
+	  return Titanium.UI.createButton( o ); 
+	};
+	
+	return self;
+}
+
+module.exports = NavBar;

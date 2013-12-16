@@ -1,0 +1,75 @@
+function SecondViewTable() {
+
+	//http://koding.com/
+
+
+	
+
+	var self = Ti.UI.createView({backgroundColor:'#eee9cf'});	
+	var firstTime = true;
+	
+	var sview = Ti.UI.createScrollView({ contentWidth:'100%',//'auto',
+									     contentHeight:'100%',//'auto',
+									     width:'100%',
+									     height:'100%',
+									     top:0,
+									     showVerticalScrollIndicator:true,									     										 
+										 scrollType: 'vertical' 	
+										 
+										} );	
+	self.add(sview);
+    
+    var data = [];	
+    
+    if(firstTime) {
+	    loadData();
+	    firstTime = false;
+	}   
+    				
+	function loadData() {	
+						
+		var dir = Ti.Filesystem.getFile(Titanium.Filesystem.applicationDataDirectory);
+		var f = dir.getDirectoryListing();
+		var numPhotos = f.length || 1; //Documents folder is empty on 1st load post install, so unless there's a default value, you get a blank screen... 	
+		
+			var a2 = Titanium.UI.createAlertDialog({title:'Data Reload?'});
+		    a2.setMessage('loadData() called. numPhotos = ' + numPhotos);
+		    //a2.show();
+		
+		for(var a=0; a < numPhotos; a++ ) {
+			
+			//var photo = Titanium.Filesystem.getFile(Titanium.Filesystem.applicationDataDirectory, imgNam);
+				
+			data[a] = Ti.UI.createTableViewRow( { hasChild:true, 
+												  title:'Image '+ (a+1), 
+												  color:'#60604b', 
+												  font:{fontSize:16,fontWeight:'bold'},
+												  backgroundColor:'#eee9cf', 
+												  backgroundSelectedColor:'#008b5c', //c2d82e
+												  //selectedBackgroundImage:'none'
+												  //leftImage: photo -->> perforamnce hog... adding a full size image with width x height changed?
+												  } );			
+											  
+		}
+	}
+	
+	// tableview object
+	var tableView = Titanium.UI.createTableView({
+		backgroundColor:'white',
+		data:data,
+		separatorStyle:Ti.UI.iPhone.TableViewSeparatorStyle.NONE,
+		top:0
+	});
+	
+	var wrapperView = Titanium.UI.createView({top:0, width:'100%', height:'83%'});
+	sview.add(wrapperView);
+	
+	wrapperView.add(tableView);	
+	
+	self.addEventListener('doDataReload', loadData);
+	
+	
+	return self;
+}
+
+module.exports = SecondViewTable;
